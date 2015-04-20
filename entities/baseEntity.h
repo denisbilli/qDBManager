@@ -7,7 +7,6 @@
 #include <QAbstractListModel>
 #include <QMetaProperty>
 #include "abstractEntity.h"
-#include "../qdbmanager_global.h"
 
 #define Q_TRANSIENT(property)       Q_CLASSINFO(EXCLUDE_PROPERTY_INFO,  #property)
 #define Q_TABLENAME(tablename)      Q_CLASSINFO(TABLENAME_INFO, #tablename)

@@ -6,7 +6,6 @@
 #include <QVariantMap>
 #include <QAbstractListModel>
 #include <QMetaProperty>
-#include "../qdbmanager_global.h"
 
 #define TABLENAME_INFO              "__TABLENAME"
 #define EXCLUDE_PROPERTY_INFO       "__EXCLUDE_PROP"
