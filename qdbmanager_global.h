@@ -1,0 +1,12 @@
+#ifndef QDBMANAGER_GLOBAL_H
+#define QDBMANAGER_GLOBAL_H
+
+#include <QtCore/qglobal.h>
+
+#if defined(QDBMANAGER_LIBRARY)
+#  define QDBMANAGERSHARED_EXPORT Q_DECL_EXPORT
+#else
+#  define QDBMANAGERSHARED_EXPORT Q_DECL_IMPORT
+#endif
+
+#endif // QDBMANAGER_GLOBAL_H
