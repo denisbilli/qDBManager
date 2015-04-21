@@ -364,6 +364,97 @@ bool QDBManager::createTable(QMetaObject meta)
     return ret;
 }
 
+/**
+ * @brief QDBManager::syncEntityTable synchronizes the Entity with the DB's Table. The Entity always wins
+ * @param table the table name
+ * @param ref the Entity pointer
+ * @return true if succeded
+ */
+bool QDBManager::syncEntityTable(QMetaObject meta) {
+    bool alreadyOpenedDB = true;
+    //apro il DB se è chiuso
+    if (!db.isOpen()) {
+        bool openResult = openDB();
+        if(!openResult) {
+            return false;
+        }
+        alreadyOpenedDB = false;
+    }
+
+    int tableIndex = meta.indexOfClassInfo(TABLENAME_INFO);
+    QString tableName = meta.classInfo(tableIndex).value();
+
+    QSqlQuery tableInfo(db);
+    bool result = tableInfo.exec(QString("PRAGMA table_info( '%1' );").arg(tableName));
+    if(!result) { return false; }
+
+    QMap<QString, QString> dbFields;
+    while(tableInfo.next()) {
+        QString columnName = tableInfo.value(1).toString();
+        QString columnType = tableInfo.value(2).toString();
+        dbFields.insert(columnName, columnType);
+    }
+
+    //verifico se la tabella esiste già nel DB; se non esiste, chiudo
+    if(!listOfTables.contains(QString(tableName)))
+        return false;
+
+    QStringList excludeList;
+    for(int i = 0; i < meta.classInfoCount(); ++i) {
+        QString name = QString(meta.classInfo(i).name());
+        QString value = QString(meta.classInfo(i).value());
+        if(name == EXCLUDE_PROPERTY_INFO) {
+            excludeList<<value;
+        }
+    }
+
+    QStringList listOfIndexColumns;
+    for(int i = 0; i < meta.classInfoCount(); ++i) {
+        QString name = QString(meta.classInfo(i).name());
+        QString value = QString(meta.classInfo(i).value());
+        if(name == INCLUDE_INDEX_INFO) {
+            listOfIndexColumns<<value.toUpper();
+        }
+    }
+
+    QStringList listOfProps;
+    for(int i = 0; i < meta.propertyCount(); ++i) {
+        QString name = QString(meta.property(i).name());
+        QString type = QString(meta.property(i).typeName());
+
+        if(name == "objectName" || name.startsWith("__") || excludeList.contains(name) || name.toLower() == "id")
+            continue;
+
+        if(!dbFields.contains(name.toUpper())) {
+            //la colonna non esiste nel DB
+            if(type == "int" || type == "bool" || type == "qlonglong") {
+                listOfProps << QString("%1 INTEGER NULL").arg(name.toUpper());
+            } else if(type == "QString") {
+                listOfProps << QString("%1 TEXT NULL").arg(name.toUpper());
+            }
+        }
+    }
+
+    bool ret = false;
+    if(listOfProps.count() > 0) {
+        for (int i = 0; i < listOfProps.size(); ++i) {
+            QString sqlTable = QString("ALTER TABLE %1 ADD COLUMN %2;").arg(tableName).arg(listOfProps.at(i));
+            qDebug()<<sqlTable;
+            QSqlQuery query;
+            ret &= query.exec(sqlTable);
+        }
+    } else {
+        ret = true;
+    }
+
+    if(!alreadyOpenedDB) {
+        //se al momento della chiamata il DB era chiuso, lo richiudo
+        closeDB();
+    }
+
+    return ret;
+}
+
 bool QDBManager::deleteTable(QMetaObject meta)
 {
     bool alreadyOpenedDB = true;

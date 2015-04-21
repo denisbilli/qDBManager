@@ -19,7 +19,6 @@ class QDBManager : public QObject
     Q_ENUMS(Errors)
 
 protected:
-    QSqlDatabase db;
     QString m_sqlDriver;
     QList<QString> listOfTables;
 
@@ -54,6 +53,7 @@ private:
     QDBManager& operator=(const QDBManager &);
     /************************************************************************************/
 public:
+    QSqlDatabase db;
     static QDBManager *create(QString name, QString sqlDriver);
 
     /* 0-99 Errori */
@@ -80,6 +80,7 @@ public:
      * non sia aperta.
      ************************************************************************************/
     bool createTable(QMetaObject meta);
+    bool syncEntityTable(QMetaObject meta);
     bool deleteTable(QMetaObject meta);
     bool createAllTables();
     QList<QString> getListOfTables();
@@ -129,6 +130,9 @@ public:
 
     template<typename T>
     bool deleteTable() { return deleteTable(T::staticMetaObject); }
+
+    template<typename T>
+    bool sync() { return syncEntityTable(T::staticMetaObject); }
 
     template<typename T>
     bool containsTable() {
@@ -231,7 +235,6 @@ public:
     ************************************************************************************/
     int insert(QString sqlQuery);
     QSqlError lastError();
-
 signals:
     void error(int numErr, QString description);
 
