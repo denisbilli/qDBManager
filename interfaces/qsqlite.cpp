@@ -3,6 +3,7 @@
 qSqlite::qSqlite(QObject* parent) : QDBManager(parent)
 {
     m_defaultFileName = "my.db.sqlite";
+    m_sqlDriver = "QSQLITE";
 }
 
 bool qSqlite::openDB(QString connectionString)

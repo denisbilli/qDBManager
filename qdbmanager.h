@@ -11,7 +11,20 @@
 #include <QString>
 
 #include "entities/baseEntity.h"
+#include "criteriabuilder.h"
 #include "entityfactory.h"
+
+#ifndef CONTEXT_NAME
+#define CONTEXT_NAME "default"
+#endif
+
+#ifndef CONTEXT_DB_DEF
+#define CONTEXT_DB_DEF "QSQLITE"
+#endif
+
+#if defined(TOP_DOWN) && defined(BOTTOM_UP)
+    #error Impossibile compilare con due versione di codice contrastanti
+#endif
 
 class QDBManager : public QObject
 {
@@ -19,6 +32,9 @@ class QDBManager : public QObject
     Q_ENUMS(Errors)
 
 protected:
+//    static QDBManager* _instance;
+
+    bool m_hasForeignKeys;
     QString m_sqlDriver;
     QList<QString> listOfTables;
 
@@ -40,21 +56,35 @@ protected:
     virtual QString new_id_query() = 0;
     virtual QString create_index() = 0;
 
+    virtual QString cascade_all() = 0;
+    virtual QString cascade_upd() = 0;
+    virtual QString cascade_del() = 0;
+    virtual QString cascade_upd_restrict_del() = 0;
+
+    virtual QString begin_transaction() = 0;
+    virtual QString commit_transaction() = 0;
+    virtual QString rollback_transaction() = 0;
+
+    virtual QString begin_transaction(QString) = 0;
+    virtual QString commit_transaction(QString) = 0;
+    virtual QString rollback_transaction(QString) = 0;
+
     /************************************************************************************
     * PROTECTED METHODS
     ************************************************************************************/
     explicit QDBManager(QObject* parent = 0);
     explicit QDBManager(const QDBManager &);
 
-    QString getSqlDriver() { return m_sqlDriver; }
+    virtual QString getSqlDriver() { return m_sqlDriver; }
 
     /************************************************************************************/
 private:
     QDBManager& operator=(const QDBManager &);
+
     /************************************************************************************/
 public:
     QSqlDatabase db;
-    static QDBManager *create(QString name, QString sqlDriver);
+    static QDBManager *create(QString name="", QString sqlDriver="");
 
     /* 0-99 Errori */
     enum Errors {
@@ -68,7 +98,8 @@ public:
         DB_ERROR_QUERY          = 11,
         DB_ERROR_INSERT_TABLE   = 12,
         DB_ERROR_DELETE_TABLE   = 13,
-        DB_ERROR_UPDATE_TABLE   = 14
+        DB_ERROR_UPDATE_TABLE   = 14,
+        DB_ERROR_SQL_COMMAND    = 15
     };
 
     /*************************************************************************************
@@ -95,6 +126,28 @@ public:
     BaseEntity* findById(QString table, QString entityName, int id);
     QList<BaseEntity *> internal_listAll(QString table, QString entityName, QString orderBy="",
                                          bool desc=false);
+    QVariantList one_column_query(QString query);
+
+    bool beginTransaction();
+    bool beginTransaction(QString name);
+    bool commitTransaction();
+    bool commitTransaction(QString name);
+    bool rollbackTransaction();
+    bool rollbackTransaction(QString name);
+
+    bool directCommand(QString command);
+
+    bool containsTable(QMetaObject meta) {
+        int idx = meta.indexOfClassInfo(TABLENAME_INFO);
+        QString table = meta.classInfo(idx).value();
+        return getListOfTables().contains(table);
+    }
+
+//    int insertOrUpdate(BaseEntity* entity) {
+//        int idx = entity->staticMetaObject.indexOfClassInfo(TABLENAME_INFO);
+//        QString table = entity->staticMetaObject.classInfo(idx).value();
+//        return insert(table, entity->staticMetaObject.className(), entity, true);
+//    }
 
     bool existsId(QString tableName, int id);
     bool existsEqualEntity(QString table, QString entityName, BaseEntity* entity);
@@ -136,9 +189,16 @@ public:
 
     template<typename T>
     bool containsTable() {
-        int idx = T::staticMetaObject.indexOfClassInfo(TABLENAME_INFO);
-        QString table = T::staticMetaObject.classInfo(idx).value();
-        return getListOfTables().contains(table);
+        return containsTable(T::staticMetaObject);
+    }
+
+    template<typename T>
+    T* newEntity(QObject* parent, bool *result) {
+        T* newObj = new T(parent);
+        int val = insertOrUpdate<T>(newObj);
+        *result = (val==1);
+
+        return newObj;
     }
 
     template<typename T>
@@ -146,10 +206,23 @@ public:
         int idx = T::staticMetaObject.indexOfClassInfo(TABLENAME_INFO);
         QString table = T::staticMetaObject.classInfo(idx).value();
         QList<T*> list;
-        foreach (BaseEntity* entity, find(table, T::staticMetaObject.className(), criteria, orderBy, desc)) {
+        QEntityList outList = find(table, T::staticMetaObject.className(), criteria, orderBy, desc);
+        foreach (BaseEntity* entity, outList) {
             list << qobject_cast<T*>(entity);
         }
         return list;
+    }
+
+    template<typename T>
+    QList<T*> find(QString criteria, QString orderBy="", bool desc=false) {
+        QStringList criterias = criteria.split(",", QString::SkipEmptyParts);
+        CriteriaBuilder criteriaBuilder;
+        foreach (QString criteria, criterias) {
+            QStringList keyVal = criteria.split("=", QString::SkipEmptyParts);
+            if(keyVal.count() == 2 && !(keyVal[0].isEmpty() || keyVal[1].isEmpty()))
+                criteriaBuilder.insert(keyVal[0].trimmed(),keyVal[1].trimmed());
+        }
+        return find<T>(criteriaBuilder.toList(), orderBy, desc);
     }
 
     template<typename T>
@@ -158,6 +231,14 @@ public:
         foreach (BaseEntity* entity, entityComplexQuery(T::staticMetaObject.className(), query)) {
             list << qobject_cast<T*>(entity);
         }
+        return list;
+    }
+
+    template<typename T>
+    QList<T*> type_query(QString query) {
+        QList<T*> list;
+
+
         return list;
     }
 
@@ -182,30 +263,30 @@ public:
 
     template<typename T>
     int insert(BaseEntity* entity) {
-        int idx = T::staticMetaObject.indexOfClassInfo(TABLENAME_INFO);
-        QString table = T::staticMetaObject.classInfo(idx).value();
-        return insert(table, T::staticMetaObject.className(), entity, false);
+        int idx = entity->metaObject()->indexOfClassInfo(TABLENAME_INFO);
+        QString table = entity->metaObject()->classInfo(idx).value();
+        return insert(table, entity->metaObject()->className(), entity, false);
     }
 
     template<typename T>
     int insertOrUpdate(BaseEntity* entity) {
-        int idx = T::staticMetaObject.indexOfClassInfo(TABLENAME_INFO);
-        QString table = T::staticMetaObject.classInfo(idx).value();
-        return insert(table, T::staticMetaObject.className(), entity, true);
+        int idx = entity->metaObject()->indexOfClassInfo(TABLENAME_INFO);
+        QString table = entity->metaObject()->classInfo(idx).value();
+        return insert(table, entity->metaObject()->className(), entity, true);
     }
 
     template<typename T>
     int remove(BaseEntity* entity) {
-        int idx = T::staticMetaObject.indexOfClassInfo(TABLENAME_INFO);
-        QString table = T::staticMetaObject.classInfo(idx).value();
-        return remove(table, T::staticMetaObject.className(), entity);
+        int idx = entity->metaObject()->indexOfClassInfo(TABLENAME_INFO);
+        QString table = entity->metaObject()->classInfo(idx).value();
+        return remove(table, entity->metaObject()->className(), entity);
     }
 
     template<typename T>
     int exists(BaseEntity* entity) {
-        int idx = T::staticMetaObject.indexOfClassInfo(TABLENAME_INFO);
-        QString table = T::staticMetaObject.classInfo(idx).value();
-        return existsEqualEntity(table, T::staticMetaObject.className(), entity);
+        int idx = entity->metaObject()->indexOfClassInfo(TABLENAME_INFO);
+        QString table = entity->metaObject()->classInfo(idx).value();
+        return existsEqualEntity(table, entity->metaObject()->className(), entity);
     }
 
     template<typename T>
