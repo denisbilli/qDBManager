@@ -1,4 +1,4 @@
-# QDBManager
+# qDBManager
 This is a simple DBManager for SQLite on Qt Framework. It has been created since I needed an easy way to manage my SQLite database in my C++/Qt applications. I always worked with an Entity-like approach, and I wasn't able to find a similar approach that was a "pure" C++ solution (there is **QxOrm** but it uses boost, and I didn't want. Anyway you can find it here: http://www.qxorm.com/qxorm_en/home.html). Eventually I decided to do it myself.
 
 # How it works
@@ -202,6 +202,12 @@ int main(int argc, char *argv[])
 ```
 
 As you can see, you must register your entity if you want to use it in your program. You must use the method **dbm->register_entity<[ENTITY_CLASS_NAME]>();** before reading the Entity from the database, otherwise you will obtain a NULL object.
+
+# Other functionalities
+This version is fully capable of retrieving entities from the database performing a simple search, a full query (using the CriteriaBuilder object), updating the objects, inserting them or deleting. I didn't have the time to write a full Help, you may be able to find it yourself. If you are curious you can still write me anyway.
+
+# TODO
+- Only SQLite is supported for the moment, but I'm willing to support other RDBMS soon.
 
 # Conclusions
 Hope to help someone with this lines. Every suggestion is appreciated.
