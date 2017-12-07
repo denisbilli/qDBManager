@@ -204,10 +204,12 @@ int main(int argc, char *argv[])
 As you can see, you must register your entity if you want to use it in your program. You must use the method **dbm->register_entity<[ENTITY_CLASS_NAME]>();** before reading the Entity from the database, otherwise you will obtain a NULL object.
 
 # Other functionalities
-This version is fully capable of retrieving entities from the database performing a simple search, a full query (using the CriteriaBuilder object), updating the objects, inserting them or deleting. I didn't have the time to write a full Help, you may be able to find it yourself. If you are curious you can still write me anyway.
+This version is fully capable of the basic CRUD operations, and also of retrieving entities from the database performing basic searches (using the Criteria Builder object), but also full queries. I didn't have the time to write a full Help, you may be able to find it yourself. If you are curious you can still write me anyway.
 
 # TODO
-- Only SQLite is supported for the moment, but I'm willing to support other RDBMS soon.
+- Only SQLite is supported for the moment, but I'm willing to support other RDBMS soon
+
+You can write your own adapter extending the class **QDBManager** (have a look to the file interfaces/qsqlite.h).
 
 # Conclusions
 Hope to help someone with this lines. Every suggestion is appreciated.
