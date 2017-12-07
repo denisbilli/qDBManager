@@ -3,14 +3,14 @@ This is a simple DBManager for SQLite on Qt Framework. It has been created since
 
 # How it works
 As already said, it is based on a pure Qt approach. The only thing you need to do is to include *qdbmanager.pri* inside your *.pro* file, like this:
-```
+```c++
 include(../qdbmanager/qdbmanager.pri)
 ```
 
 **Let's create an entity**
 
 Now you have to create an Entity for our test. Let's call it *TestEntity*. I created a snippet in QtCreator in order to be very fast in this phase.
-```
+```c++
 #ifndef TESTENTITY_H
 #define TESTENTITY_H
 
@@ -61,7 +61,7 @@ Now, you have several possibilities to get it work. The first is to use my perso
 
 Let's say that you need two fields called *Name* and *Surname* mapped and indexed in the Entity, and a transient *Connected* field, you would do something like:
 
-```
+```c++
 #ifndef TESTENTITY_H
 #define TESTENTITY_H
 
@@ -114,7 +114,7 @@ typedef QMap<int,QListTestEntity>   QMapTestEntity;
 #endif // TESTENTITY_H
 ```
 
-```
+```c++
 #include "testentity.h"
 
 TestEntity::TestEntity(QObject* parent) : BaseEntity(parent)
@@ -159,7 +159,7 @@ void TestEntity::set_connected(bool connected)
 
 Now your *main.cpp* looks like this:
 
-```
+```c++
 #include <QCoreApplication>
 
 #include "qdbmanager.h"
@@ -201,7 +201,13 @@ int main(int argc, char *argv[])
 }
 ```
 
-As you can see, you must register your entity if you want to use it in your program. You must use the method **dbm->register_entity<[ENTITY_CLASS_NAME]>();** before reading the Entity from the database, otherwise you will obtain a NULL object.
+As you can see, you must register your entity if you want to use it in your program. You must use the method 
+
+```c++
+dbm->register_entity<[ENTITY_CLASS_NAME]>();
+```
+
+before reading the Entity from the database, otherwise you will obtain a NULL object.
 
 # Other functionalities
 This version is fully capable of the basic CRUD operations, and also of retrieving entities from the database performing basic searches (using the Criteria Builder object), but also full queries. I didn't have the time to write a full Help, you may be able to find it yourself. If you are curious you can still write me anyway.
